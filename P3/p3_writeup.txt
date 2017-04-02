@@ -1,0 +1,41 @@
+
+#### OVERVIEW ####
+Project 3 entailed training an autonomous vehicle to drive around a track based on data collected from a simulator, using techniques from deep learning and convolutional neural networks. The model was built using the Keras deep learning library and various other python packages (numpy, csv, cv2). The goal of the project was to implement our own network design and parameters to train the car to be able to complete one or more laps around track 1 of the simulator. 
+
+I found this project to be enjoyable, although frustrating at times. A lot of experimentation was needed to fine tune the model but it helped to start with previously proven network designs (e.g. NVIDEA). Changes to parameters were made systematically so that performance could be accurately gauged. One of the major difficulties I had was the amount of time the model would take to run on my local CPU (10-60 minutes depending). Luckily I had come up with methods to eliminate unnecessary data and measure performance on a subset of the data before training on the full dataset. I will definitely be spending sometime teaching myself how to utilize the AWS GPU instances as the Udacity instructions were poor when it came to uploading and running my code and data from my console. 
+
+Future improvements to my model will include image shifts, rotations, and color distortions to make it more generalized. As an exercise, I would also like to build the same model in TensorFlow, even though Keras is simpler to use and built from TF, mainly due to the far superior documentation and flexibility.
+
+
+All files are uploaded to my github repository, found at [https://github.com/gnekut/udacity_carnd] ([model.py: Python script to run training and validation on collected data from Udacity Windows Driving Simulator],  [drive.py: Provided code to run trained model through the autonomous driving model in the simulator], [model.h5: trained conv. network model], [p3_writeup: Summarization of results and further thoughts], [p3_video.mp4: Video recording of one complete lap of autonomous driving]). The model.py file contains all code used to run the training and validation successfully. Created model was able to navigate multiple loops around Track 1 (provided through the Udacity Windows Driving Simulator); please see video (p3_video)
+
+
+
+#### Model Architecture and Training Strategy #####
+Data Collection:
+The Windows Driving Simulator was used on the fastest setting to ensure smooth driving/steering angles. For the initial collection I used the keyboard for turning but this lead to very poor model results due to the discrete and jerky values the steering angle could have. Once I learned that I could steer with the mouse my model performance greatly improved. 
+Data was collected over three full laps (two counter clockwise, one clockwise) and augmented with a large amount of data taken around turns and troublesome areas (e.g., bridge and dirt runouts). 
+
+CODE:
+Data Selection (line 68-88):
+Once file paths and steering angles were imported from the driving logs, a fraction (ZEROS_PCT) of low-/zero-angle instances were removed from the dataset. Eliminating these points was to increase the proportion of actionable training inputs (i.e. images and steering angles that have the greatest impact in navigating turns on the track). An optional parameter (DATA_REDUX) was created to select a subset of the shuffled data, helping reduce the runtime of training on my CPU. Once the data was selected, the sklearn function 'train_test_split' was used to split the data into training and validation datasets (80/20). Test data was not necessary due to the autonomous vehicle simulator program where the model would be tested.
+
+Steering Angle Correction (line 39-47):
+To make use of all three camera images, the measured steering angle needed to be adjusted for the left and right images since all cameras perceive a different road and the amount of turning that would be required. When turning right, the right camera would perceive a more minor turn than the center or left camera, and therefore a correction (delta) must be subtracted from the measured angle (center). A fixed correction angle of 0.2 radian was chosen after trying 0.15 and 0.1; however, more advanced techniques could be implemented that would scale with increasing/decresing steering angles.
+
+Model (line 101-125):
+- 1a:  Preprocessing (line 104) - normalize and zero mean-center the RGB pixel values (0:255 shifted to -1:1) using a Lambda() layer and python lambda function. There are internal Keras tools that have many other processing techniques but this was the most straight forward to handle the fairly trivial task.
+- 1b: Preprocessing (line 106) - Crop image to remove pixels above the horizon and the hood of the car since they do not add value to this model. The cropping used assumes the car is driving on a flat road; inclines/declines could cause more or less image of the road to be included.
+- 2:  Convolutional network (line 108-117) -  The model employed was based off of the NVIDEA network with modications to better suit the task at hand. I used two 5x5 filters with a stride of 2, using a 2x2 max pooling layer after each, increasing the depth from 3 to 24 and then to 48. These layers were then followed by two 3x3 fitlers with a stride of 1, only one of which was followed by a 2x2 pooling layer and the other increased the depth to 72. All convolutional layers employed a rectified linear unit activation function.
+- 3 (optional) (line 121):  Dropout - A dropout layer was added to the codebase; however, it is commented out as there were no indcations that overfitting was occuring (training and validation loss were booth continually decreasing throughout the five epochs and samples data).
+- 4:  Fully connected layers (line 122-125) - Two fully connected layers of decresing depth (100, 40) are used after the convolution to predict the steering angle value of the output node (1).
+
+[ADD IMAGE OF NETTWORK]
+
+
+Loss function and training run:
+Since the labels being calculated from the network are continous values (i.e., non-categorical) the mean square error (MSE) loss function was appropriate to determine prediction accuracy. The calculated loss would then be used through backprogogation to adjust network weights. Learning rates were not explicitly added since the model utilizes an Adams optimizer. The Keras fit_generator() was used in conjunction with two created Python generator functions to reduce memory contraints by only loading pictures when they are being used in the batch. The training process was quite tedious as I did not utilize a GPU, which should be a requirement for items like this (note, better instruction would be appreciated by me and others without AWS EC2 experience.)
+
+
+
+
