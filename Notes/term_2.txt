@@ -1,0 +1,77 @@
+TERM 2: SENSOR FUSION, LOCALIZATION, and CONTROL
+
+--- Lesson 2 (Intro to Sensors)
+- Stereo cameras: Acts like your eyes
+- Traffic signal camera: Special focus on far away objects
+- RADAR (Radio Wave Detection and Ranging): Radar is a mature technology that calculates the speed based upon the Dopplar Effect (i.e., compression/expansion of frequency (Hz)). Localization is achieved by making a radar maps of the environment due to bouncing off of hard objects. Approx. 150 degree and 200m range. NOTE, radar resolution and noise hinder performance in many senarios --- Great for velocity and poor weather
+- LIDAR (Light Detection and Ranging): (900 nm - longer wave lengths) Pulsed lasers are emitted and reflected by objects that helps generate a point map. 
+
+
+--- Lesson 3 (Kalman Filters)
+Kalman Filter: Continuous, Unimodal Distribution --- Guassian is a reasonable distribution (Monte Carlo Localization: Discrete, Multi-modal --- or --- Particle Filters: Continuous, Multi-modal)
+
+- The KF consists of two main cycles: Measurement and Motion Updates (both have associated probability distribution)
+	- Measurement Update: Based upon the measurement, update the probabilities that the measurement is accurate (e.g., Bayes' Rule)
+		- New measurements will shift the mean, but reduce the covariance due to greater number of measurements within a realm. 
+		old:(mu,s^2), new:(nu,r^2)
+		mu' = (r^2*mu+s^2*nu)/(r^2+s^2)
+		s'^2 = 1/((1/r^2)+(1/s^2)))
+	- Motion Update: Convolution (total probability)
+		old:(mu,s^2), new:(nu,r^2)
+		mu'= mu + nu
+		s'^2 = s^2 + r^2
+- Multivariate Guassians: Multiple means and a matrix of covariance values --- 
+
+
+- Process:
+prediction update:
+x' = F x + u
+P' = F P F_t + Q
+
+measurement update:
+y = z - H x
+S = H P H_t + R
+K = P H_t S^-1
+x' = x + K y
+P' = (I - K H) * P
+
+(x: estimate, P: Uncertainty covariance, F: State transition matrix, u: Process noise (e.g., random acceleration), z: Measurement, y: Measurement error, H: Measurement transition function, R: Meansurement Noise, I: Identiry matrix, K: Kalman Gain)
+
+u ~ N(0,Q) [Gaussian with zero mean and covariance matrix Q]
+
+
+--- Lesson 4: Lidar and Radar Fusion with Kalman Filters
+- def. Extended Kalman Filter - More complex models, non-linear type functions 
+
+- Track pedestrians using radar (polar coordinate system) and lidar (cartesian coordinate system) technology.
+- Predictions and measurement updates happen sequentially, where each measurement update would occur asychronously (if two measurements arrive at the same time, redo to same prediction step with the updated mean/covar.
+
+
+*** Eigen/Dense ***
+[Matrix initialization]: class MatrixXd mat_name(dim_n, dim_m);
+[Matrix init set]: mat_name << 1,2,3,4;
+[Matrix update]: mat_name(1,0) = 14;
+[Mat. transpose]: mat_name.transpose()
+[Mat. inverse]: mat_name.inverse()
+
+
+
+--- Lesson 5: 
+Laser Measurments: 2D measurement vector
+
+[ Need: Measurement vector (z = [px, py]), state vector (x = [px, py, vx, vy]), measurement matrix (H) and covariance matrix (R)]
+
+
+Extended Kalman Filters: Use a linear approximation to remove the non-linear components that may come from the state transition matrix derived from sensor measurement data (e.g. radar). -- The linear approximation helps maintian the Gaussian distribution so the Kalman Filter application is still valid. To linearize a non-linear function, use firt order Taylor Expansion:
+
+h(x) ~= h(mu) + [dh(mu)/dx * (x - mu)]
+
+To incorporate multi-dimensional terms, the Taylor series expansion must include these dimensions; this is where the Jacobian (first order) and Hessian (second order) matrices come in to effect. For all items in the course they will only go up to first order derivatives so only the Jacobian (Df(a)) will bne included:
+
+T(x) = f(a) + (x-a)T * Df(a)
+
+Since radar has three different measurement components (rho:range, phi:bearing, rho_dot:range rate) and it maps to four state vectors (px, py, vx, vy) the Jacobian will be a 3 x 4 matrix containing the partial derivatives with respect to each other.
+
+
+
+

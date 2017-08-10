@@ -1,0 +1,44 @@
+.nn.conv2d(input, weights, strides, padding) + bias
+.nn.bias_add(layer, bias) -- adds a bias matrix/vector when not the same size as the XW product
+.nn.max_pool(layer, ksize, strides, padding) ---- ksize is the folling size dimensions, and stides is the pooling stride.
+nn.relu(x) ---- Recified linear unit: [e.g., y=x if x>0, y=0 if x<0] activation function ---- QQQQQQQQQQ: What do negative values mean in this context since an output (input to the ReLU) could be the product of a neg. weight and pos. input (or vise versa); why throw it out?
+.nn.xw_plus_b() = matrix XW + b
+.stop_gradient(node_assignment) --- Stop back propagation at this point so weights are not updated.
+.nn.sparse_softmax_cross_entropy_with_logits(logits, labels)
+.nn.softmax_cross_entropy_with_logits(logits, labels)
+
+
+
+
+(cont. 10 - Convolution)
+Steps of convolution:
+1) Stack up convultions by using strides to create deeper and deeper networks, then train the classifier
+2) Since there are now shared weights among certain features, the derivative (used in back prop) is just he addition of the feature compenents weights.
+
+- Weights are shared across all patches within a given layer and therefore can detect similar objects across location.
+- Given an input layer with a volume W, a filter volume of F, stride S, padding P ----> next layer volume = (W-F+2P)/(S+1)
+
+
+
+POOLING:
+- The issue with convolution with stirde > 1 is that it may be to agressive for downsizing an image. Instead the idea of 'pooling' uses a stride=1 for minor downsizing, then performs a sort of neighbor analysis to determine what the values of those points around them look like (e.g., look at a collection of values and take the maximum/average/etc. of them and downsize all neighbors to a point.) NOTE, the reduction of stride makes the calculation more expensive and there are now two more parameters to adjust for: pooling size, and pooling stride.
+
+example, pooling: image -> convolution -> max pooling -> convolution -> max pooling -> fully connected -> fully connected -> output/classifier
+
+
+1 x 1 'CONVOLUTIONS':
+- Adding a one by one convolution (which is really just a matrix multiply, or linear transformation) can be a very inexpensive way to create an additional mini-deep network for higher level learning.
+
+
+INCEPTION MODULE:
+*** A general, and very successful convolution strategy that uses average pooling and 1x1 conv. is called an 'inception module'***
+Idea: Perform multiple sizes and methods of convolutions and concatenate the results into a very deep, varied output. [Ex. average pooling followed by a 1x1, straight 1x1, a 1x1 followed by a 3x3, a 1x1 followed by a 5x5 ------ all stacked together in one deep output.]
+
+
+
+TUNING MODELs:
+- Different network architectures
+- Regularization (dropout, l2)
+- Tune hyper-params
+- Improve preprocessing (normalization, zero mean)
+- Color shifts

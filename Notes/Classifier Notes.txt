@@ -1,0 +1,19 @@
+sci-kit learn (sklearn)
+
+
+Classifier Algoritms:
+- Naive Bayes
+
+- Supooer Vector Machines (SVM)
+--- Creation of a line or hyper plane that maximizes the margin between the boundary and the nearest set of points/classes
+--- Fairly robust against outliers
+--- ['kernels': Different types of fitting algorithms and shapes
+--- ['gamma': Defines how much each training example influences the decision boundary (i.e. if points far away have a strong influence of where the boudnary will be created.). Lower values can lead to overfitting since only local points inflience the boundary]
+--- ['C': Controls the trade off of a smooth descision boundary and classifying the training points correctly. Large values creates the more intricate decision boundaries, which can lead to overfitting]
+--- [Strengths: Really well in complicated domains, costly computations depending on the size of data, and could be over fit.]
+
+- Decisions Trees
+--- Ask multiple linear questions in succession
+--- Entropy: DT tries to eliminate the entropy within a segmentation (i.e. reduce the impurities within a classifier) (sum over all classifiers (i) of the product between the fraction of samples that classifier makes up and the log (base 2) of that same fraction) (-sum_i(p_i*log2(p_i)))
+--- DTs maximize information gain: IG = entropy(parent) - w_avg(entropy(child))
+--- [Strengths: Very esay to use.], [Weaknesses: prone to overfitting]

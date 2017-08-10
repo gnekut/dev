@@ -1,0 +1,9 @@
+Udacity Question Log:
+7.9 Sigmoid: "Neural networks take advantage of alternating transforms and activation functions to better categorize outputs. The sigmoid function is among the most common activation functions." ---> Why?
+
+
+train vs. validate sample size
+
+tf.truncated_normal vs. tf.random_normal
+
+tf.placeholder(type,(None, 32, 32, 1)) ----> Why the 'None'?

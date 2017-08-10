@@ -1,0 +1,107 @@
+tf
+.Session()
+	.run(return,feed_dict)
+.global_variables_initializer()
+.reset_default_graph
+.placeholder(type)
+.Variable(shape, name='')
+	Note: the [name=''] attribute ensures naming scheme matches between saved/loaded models of the same type
+.reshape(v,shape)
+.add(v,w)
+.matmul(V,W)
+.reduce_mean(V)
+.cast(V,type)
+.nn
+	.softmax_cross_entropy_with_logits(S,L)
+	.dropout(V, kp) [Note: kp set to training:0.5, testing:1.0 --- kp stands for keep probability and will tell the network what probability that any one parameter is kept. For example, setting training:0.5 the network will drop half of the values and scale all remaining parameters by 1/kp to scale the average appropriately.]
+.train
+	.GradientDescentOptimizer(l_rate)
+	.Saver()
+		.save(session, file_path)
+		.restore(session, file_path)
+
+
+
+
+====== DEEP NEURAL NETWORKS ========
+Optimizing networks should always begin with a larger model then necessary and then pair down to prevent over-fitting. A larger network can be easier to train for large data but runs the risk of overfit. Often the best way to ensure over-fitting does not occur is to penalize parameters with very large weights (less influence/fit of the model). Using something called 'L2 Regularization' that will add an additional term to the loss function to penalize large weights: [l' = l + 0.5*c*norm_2(v)^2] (where norm_2() is the l2 norm of a vector: sqrt(sum(v.^2)), therefore 0.5*[v1^2 + v2^2 + ... + vN^2])
+
+Dropout (used for training set):
+The parameters being passed between layers are randomly "destroyed" but setting half of the values to zero, and doubling those that exist to properly scale final average. This prevents the model from not relying on an activation being present on every iteration. Each input gives a unique set for a network to force it to learn a redundant representation. If this doesnt clearly help overfitting, try using a bigger network. Then, for evaluation, averaging all of the activations makes an accurate represenation.
+
+
+
+========= CONVOLUTIONAL NEURAL NETWORKS ==========
+Main idea: If you know something about the types of things you are trying to train on (e.g., an image of letters) you know that some of the infomration contained in the photo is not important in the classification and can be ignored (e.g., if the letters are different colors, the color can be ignored)
+
+def. Translational invariance: Different positions in an image/data but same object
+
+def. Statistical invariance: (weight sharing) if an input contains the same information they should be given the same weights since they dont change significantly over time/space. 
+
+def. Convolutional networks: share parameters across space. Progressively squeezes the spatial dimensions while extending the depths of the network. [Example: take an image with three channels (r,g,b) making up the 'depth' of the image. Instead of mapping the entire image through a weight matrix of corresponding size, use a small patch and iterate over the entire surface of the image (similar to batch processing). THe new output has a different height, width, and depth]. Note that the edges of the image can be padded with zeros to make it the same size - valid padding: reduced size, same padding - equal sizes. The convolution compressed with width of the network layers into a deep layer. [kernal/patch, feature map (rgb), output depth (new number of feature maps), stride]
+
+
+
+
+
+
+
+
+.nn.conv2d(input, weights, strides, padding) + bias
+.nn.bias_add(layer, bias) -- adds a bias matrix/vector when not the same size as the XW product
+.nn.max_pool(layer, ksize, strides, padding) ---- ksize is the folling size dimensions, and stides is the pooling stride.
+nn.relu(x) ---- Recified linear unit: [e.g., y=x if x>0, y=0 if x<0] activation function ---- QQQQQQQQQQ: What do negative values mean in this context since an output (input to the ReLU) could be the product of a neg. weight and pos. input (or vise versa); why throw it out?
+
+
+(cont. 10 - Convolution)
+Steps of convolution:
+1) Stack up convultions by using strides to create deeper and deeper networks, then train the classifier
+2) Since there are now shared weights among certain features, the derivative (used in back prop) is just he addition of the feature compenents weights.
+
+- Weights are shared across all patches within a given layer and therefore can detect similar objects across location.
+- Given an input layer with a volume W, a filter volume of F, stride S, padding P ----> next layer volume = (W-F+2P)/(S+1)
+
+
+
+POOLING:
+- The issue with convolution with stirde > 1 is that it may be to agressive for downsizing an image. Instead the idea of 'pooling' uses a stride=1 for minor downsizing, then performs a sort of neighbor analysis to determine what the values of those points around them look like (e.g., look at a collection of values and take the maximum/average/etc. of them and downsize all neighbors to a point.) NOTE, the reduction of stride makes the calculation more expensive and there are now two more parameters to adjust for: pooling size, and pooling stride.
+
+example, pooling: image -> convolution -> max pooling -> convolution -> max pooling -> fully connected -> fully connected -> output/classifier
+
+
+1 x 1 'CONVOLUTIONS':
+- Adding a one by one convolution (which is really just a matrix multiply, or linear transformation) can be a very inexpensive way to create an additional mini-deep network for higher level learning.
+
+
+INCEPTION MODULE:
+*** A general, and very successful convolution strategy that uses average pooling and 1x1 conv. is called an 'inception module'***
+Idea: Perform multiple sizes and methods of convolutions and concatenate the results into a very deep, varied output. [Ex. average pooling followed by a 1x1, straight 1x1, a 1x1 followed by a 3x3, a 1x1 followed by a 5x5 ------ all stacked together in one deep output.]
+
+
+
+TUNING MODELs:
+- Different network architectures
+- Regularization (dropout, l2)
+- Tune hyper-params
+- Improve preprocessing (normalization, zero mean)
+- Color shifts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
