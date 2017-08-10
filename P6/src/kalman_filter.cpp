@@ -1,5 +1,6 @@
 #include "kalman_filter.h"
 #include <iostream>
+#include <math.h>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -33,13 +34,8 @@ void KalmanFilter::Update(const VectorXd &z) {
 
   // Process Measurement
   VectorXd y = z - H_ * x_;
-  MatrixXd S = H_ * P_ * H_.transpose() + R_;
-  MatrixXd K = P_ * H_.transpose() * S.inverse();
-  MatrixXd I = MatrixXd::Identity(x_.size(), x_.size());
 
-  // Update State
-  x_ = x_ + K * y;
-  P_ = (I - K * H_) * P_;
+  PushUpdate(y);
 
 }
 
@@ -52,6 +48,8 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
     x' = x + K y
     P' = (I - K Hj) * P
   */
+
+
   float px = x_[0];
   float py = x_[1];
   float vx = x_[2];
@@ -60,25 +58,35 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
 
   // Covert x_cart to x_polar
   VectorXd x_polar(3);
-  x_polar << sqrt(px2_py2),
-            atan2(py, px),
-            (px*vx + py*vy)/sqrt(px2_py2);
+  if (fabs(px2_py2) > 0.00001) {
+    x_polar << sqrt(px2_py2),
+              atan2(py, px),
+              (px*vx + py*vy)/sqrt(px2_py2);
+  } else {
+    x_polar << 0, 0, 0;
+  }
 
   // Normalize and Process Measurement
   VectorXd y = z - x_polar; // [3]
-  y(1) = fmod(y(1), acos(-1));
-  if (y(1) > acos(-1)) {
-    y(1) = y(1) - 2*acos(-1);
-  } else if (y(1) < -1*acos(-1)) {
-    y(1) = y(1) + 2*acos(-1);
+  y(1) = fmod(y(1), M_PI);
+  if (y(1) > M_PI) {
+    y(1) = y(1) - 2*M_PI;
+  } else if (y(1) < -1*M_PI) {
+    y(1) = y(1) + 2*M_PI;
   }
-  
-  MatrixXd S = H_ * P_ * H_.transpose() + R_; // [3,3]
-  MatrixXd K = P_ * H_.transpose() * S.inverse(); // [4,3]
+
+  PushUpdate(y);
+
+}
+
+void KalmanFilter::PushUpdate(VectorXd &y) {
+  // Compute Kalman Gain
+  MatrixXd P_Ht = P_ * H_.transpose();
+  MatrixXd S = H_ * P_Ht + R_; // [3,3]
+  MatrixXd K = P_Ht * S.inverse(); // [4,3]
   MatrixXd I = MatrixXd::Identity(x_.size(), x_.size()); // [4,4]
 
   // Update State
   x_ = x_ + K * y; // [4] + [4,3] * [3]
   P_ = (I - K * H_) * P_; // ([4,4] - [4,3]*[3,4]) * [4,4]
-
 }

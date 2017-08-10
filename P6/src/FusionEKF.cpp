@@ -108,22 +108,28 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float dt = (measurement_pack.timestamp_ - previous_timestamp_)/1000000.0;
   previous_timestamp_ = measurement_pack.timestamp_;
 
-  const float n_ax = 9;
-  const float n_ay = 9;
-  float dt_2 = dt * dt;
-  float dt_3 = dt_2 * dt;
-  float dt_4 = dt_3 * dt;
+  /*
+  If time difference between measurements is greater than a
+  thousandth of a second, predict state.
+  */
+  if (dt > 0.001) {
+    const float n_ax = 9;
+    const float n_ay = 9;
+    float dt_2 = dt * dt;
+    float dt_3 = dt_2 * dt;
+    float dt_4 = dt_3 * dt;
 
-  ekf_.F_(0,2) = dt;
-  ekf_.F_(1,3) = dt;
+    ekf_.F_(0,2) = dt;
+    ekf_.F_(1,3) = dt;
 
-  ekf_.Q_ <<  
-  dt_4*n_ax/4, 0, dt_3*n_ax/2, 0,
-  0, dt_4*n_ay/4, 0, dt_3*n_ay/2,
-  dt_3*n_ax/2, 0, dt_2*n_ax, 0,
-  0, dt_3*n_ay/2, 0, dt_2*n_ay;
+    ekf_.Q_ <<  
+    dt_4*n_ax/4, 0, dt_3*n_ax/2, 0,
+    0, dt_4*n_ay/4, 0, dt_3*n_ay/2,
+    dt_3*n_ax/2, 0, dt_2*n_ax, 0,
+    0, dt_3*n_ay/2, 0, dt_2*n_ay;
 
-  ekf_.Predict(); 
+    ekf_.Predict(); 
+  }
 
   /*****************************************************************************
    *  Update

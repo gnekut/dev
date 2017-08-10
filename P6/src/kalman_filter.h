@@ -64,6 +64,11 @@ public:
    */
   void UpdateEKF(const Eigen::VectorXd &z);
 
+  /**
+  Utility function to process Kalman calculations
+  */
+  void PushUpdate(Eigen::VectorXd &y);
+
 };
 
 #endif /* KALMAN_FILTER_H_ */
