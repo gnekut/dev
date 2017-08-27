@@ -26,10 +26,10 @@ UKF::UKF() {
   P_ = MatrixXd::Identity(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1;
+  std_a_ = 3;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.75;
+  std_yawdd_ = 0.5;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 10;
@@ -184,7 +184,6 @@ void UKF::Prediction(double dt) {
     
     x_in += weights_(i) * X_sig_pred_.col(i); // Compute predicted mean
   }
-
   
   x_in(3) = NormAngle(x_in(3)); // Normalize Angle
   
@@ -270,10 +269,11 @@ void UKF::UpdateRadar(MeasurementPackage m_pkg) {
     double yaw = X_sig_pred_(3,i);
 
     // Transform state vector into radar measurement coordinates
-    Z_sig(0,i) = sqrt(px*px + py*py);
-    Z_sig(1,i) = atan2(py, px);
-    if (Z_sig(0,i) > 0.001) {
+    
+    if (fabs(px) > 0.01 && fabs(py) > 0.01) {
       // Prevent division by zero
+      Z_sig(0,i) = sqrt(px*px + py*py);
+      Z_sig(1,i) = atan2(py, px);
       Z_sig(2,i)= (px*cos(yaw)*v + py*sin(yaw)*v) / Z_sig(0,i);
     }
 
