@@ -26,10 +26,10 @@ UKF::UKF() {
   P_ = MatrixXd::Identity(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.1;
+  std_a_ = 1;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.1;
+  std_yawdd_ = 0.75;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 10;
@@ -141,7 +141,7 @@ void UKF::Prediction(double dt) {
 
 
   // =============================================================================
-  // Calculate and Initialize augmented sigma point matrix
+  // Initialize augmented sigma point matrix
   MatrixXd X_sig_aug = MatrixXd::Zero(n_aug_, 2*n_aug_+1);
   X_sig_aug.col(0) = x_aug;
   for (int i = 0; i < n_aug_; i++) {
@@ -181,34 +181,26 @@ void UKF::Prediction(double dt) {
     X_sig_pred_(2,i) = v + dt*nu_a;
     X_sig_pred_(3,i) = yaw + dt*yawd + 0.5*(dt*dt*nu_yawdd);
     X_sig_pred_(4,i) = yawd + dt*nu_yawdd;
-
-    // Compute predicted mean
-    x_in += weights_(i) * X_sig_pred_.col(i);
+    
+    x_in += weights_(i) * X_sig_pred_.col(i); // Compute predicted mean
   }
 
-  // Normalize Angle
-  while (x_in(3)> M_PI) x_in(3)-=2.*M_PI;
-  while (x_in(3)<-M_PI) x_in(3)+=2.*M_PI;
+  
+  x_in(3) = NormAngle(x_in(3)); // Normalize Angle
   
   // =============================================================================
   // Compute predicted covariance
   for (int i = 0; i < 2*n_aug_+1; i++) {
-
-    // State vector differential
-    VectorXd x_diff = X_sig_pred_.col(i) - x_in;
-
-    // Normalize yaw angle
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    
+    VectorXd x_diff = X_sig_pred_.col(i) - x_in; // State vector residuals
+    x_diff(3) = NormAngle(x_diff(3)); // Normalize yaw angle
 
     P_in += weights_(i) * (x_diff) * (x_diff).transpose();
   }
 
-
-  x_ = x_in;
+  x_ = x_in; //
   P_ = P_in;
-  std::cout << "X_pred\n" << x_ << "\n\n";
-  std::cout << "P_pred\n" << P_ << "\n\n";
+
 }
 
 
@@ -218,18 +210,18 @@ void UKF::Prediction(double dt) {
 // =============================================================================
 void UKF::UpdateLidar(MeasurementPackage m_pkg) {
 
+  // Measurement vector initialization
+  VectorXd z_meas(2);
+  z_meas << m_pkg.raw_measurements_[0], 
+            m_pkg.raw_measurements_[1];
+
   MatrixXd R = MatrixXd::Zero(2,2);
   R(0,0) = std_laspx_*std_laspx_;
   R(1,1) = std_laspy_*std_laspy_;
 
-  VectorXd z_meas(2);
-  z_meas << m_pkg.raw_measurements_[0], m_pkg.raw_measurements_[1];
-
   MatrixXd H(2, 5);
-  H << 
-  1, 0, 0, 0, 0, 
-  0, 1, 0, 0, 0;
-
+  H << 1, 0, 0, 0, 0, 
+        0, 1, 0, 0, 0;
 
   VectorXd y = z_meas - H * x_; // y(2,1)
   MatrixXd P_Ht = P_ * H.transpose(); // P_Ht[5,2]
@@ -238,16 +230,12 @@ void UKF::UpdateLidar(MeasurementPackage m_pkg) {
   MatrixXd K = P_Ht * Si; // K[5,2]
   MatrixXd I = MatrixXd::Identity(x_.size(), x_.size());
 
-  // Update State
-  x_ = x_ + K * y;
-  P_ = (I - K * H) * P_;
-
-  std::cout << "X_laser\n" << x_ << "\n\n";
-  std::cout << "P_laser\n" << P_ << "\n\n";
-
-
+  x_ = x_ + K * y; // Update state
+  P_ = (I - K * H) * P_; // Update covariance
+  
   float nis;
   nis = y.transpose() * Si * y;
+  std::cout << nis << std::endl;
 }
 
 
@@ -257,6 +245,11 @@ void UKF::UpdateLidar(MeasurementPackage m_pkg) {
 // =============================================================================
 void UKF::UpdateRadar(MeasurementPackage m_pkg) {
 
+  // Measurement vector initialization
+  VectorXd z_meas(3);
+  z_meas << m_pkg.raw_measurements_[0], 
+            m_pkg.raw_measurements_[1], 
+            m_pkg.raw_measurements_[2];
 
   // Initialize radar covariance, noise, and state transformation structures
   MatrixXd S = MatrixXd::Zero(3,3);
@@ -270,58 +263,48 @@ void UKF::UpdateRadar(MeasurementPackage m_pkg) {
   VectorXd z_pred = VectorXd::Zero(3);
   MatrixXd Z_sig = MatrixXd::Zero(3,2*n_aug_+1);
   for (int i=0; i<2*n_aug_+1; i++) {
-    
 
     double px = X_sig_pred_(0,i);
     double py = X_sig_pred_(1,i);
     double v = X_sig_pred_(2,i);
     double yaw = X_sig_pred_(3,i);
-    
 
     // Transform state vector into radar measurement coordinates
     Z_sig(0,i) = sqrt(px*px + py*py);
     Z_sig(1,i) = atan2(py, px);
-
-    // Prevent division by zero
     if (Z_sig(0,i) > 0.001) {
+      // Prevent division by zero
       Z_sig(2,i)= (px*cos(yaw)*v + py*sin(yaw)*v) / Z_sig(0,i);
     }
-    z_pred += weights_(i) * Z_sig.col(i);
+
+    z_pred += weights_(i) * Z_sig.col(i); // Predicted mean state (transformed to radar measurement space)
   }
 
 
 
-  //Compute and normalize state vector residuals
   for (int i = 0; i < 2*n_aug_+1; i++) {
-    VectorXd z_sig_resid = Z_sig.col(i) - z_pred;
-
-    while (z_sig_resid(1)> M_PI) z_sig_resid(1)-=2.*M_PI;
-    while (z_sig_resid(1)<-M_PI) z_sig_resid(1)+=2.*M_PI;
-
-
+    VectorXd z_sig_resid = Z_sig.col(i) - z_pred; // State sigma point residuals
+    z_sig_resid(1) = NormAngle(z_sig_resid(1)); // Normalize state vector angle, theta
     S += weights_(i) * (z_sig_resid) * (z_sig_resid).transpose(); // Predicted covariance
     T += weights_(i) * (X_sig_pred_.col(i) - x_) * (z_sig_resid).transpose(); // Cross-correlation
   }
   S += R; // Add sensor measurement noise
-  MatrixXd Si = S.inverse();
+  MatrixXd Si = S.inverse(); // Invert S
   MatrixXd K = T * Si; // Kalman gain
 
-
-  // Compute Residuals and Normalize
-  VectorXd z_meas(3);
-  z_meas << m_pkg.raw_measurements_[0], 
-            m_pkg.raw_measurements_[1], 
-            m_pkg.raw_measurements_[2];
-
-  VectorXd z_resid = z_meas - z_pred;
-  while (z_resid(1)> M_PI) z_resid(1)-=2.*M_PI;
-  while (z_resid(1)<-M_PI) z_resid(1)+=2.*M_PI;
-
+  VectorXd z_resid = z_meas - z_pred; // Measurement residuals
+  z_resid(1) = NormAngle(z_resid(1)); // Normalize angle
   
-  // Update
-  x_ += K * (z_resid);
-  P_ -= K * S * K.transpose();
+  x_ += K * (z_resid); // Update state
+  P_ -= K * S * K.transpose(); // Update covariance
 
-  std::cout << "X_rad\n" << x_ << "\n\n";
-  std::cout << "P_rad\n" << P_ << "\n\n";
+}
+
+
+double UKF::NormAngle(double x_in) {
+  double x_out = x_in;
+  while (x_out> M_PI) x_out-=2.*M_PI;
+  while (x_out<-M_PI) x_out+=2.*M_PI;
+
+  return x_out;
 }
