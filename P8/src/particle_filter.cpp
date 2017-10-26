@@ -22,8 +22,13 @@ GN 2017-10-23: Thoughts of possible errors:
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
+	/*
+	Purpose: Initialize particle filter by creating distribution of particles surrounding the intitial GPS coordinate measurements
+	Input(s): [x: GPS X-position],[y: GPS Y-position], [theta: vehicle heading]
+	Output(s): N/A - Object assignments; [particles_: x, y, theta, weight, id for each newly created particle], [weights_: Collection of all particle weights in a single vector]
+	*/
 
-	num_particles_ = 1000; // Initialize particle count
+	num_particles_ = 50; // Initialize particle count
 
 	// Noise Generators
 	default_random_engine gen; // Generate uniform dist. numbers
@@ -48,6 +53,11 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
+	/*
+	Purpose: Update all particles position based upon the movement of the vehicle.
+	Input(s): [delta_t: ellapsed time between predition steps (s)], [std_pos: x/y/theta noise parameters], [velocity: speed of vehicle (m/s)], [yaw_rate: Rate of turning angle change (rad/s)]
+	Output(s): N/A - Object assignments: [particles_: translated particle positions and heading]
+	*/
 
 	default_random_engine gen; // Generate uniform dist. numbers
 	normal_distribution<double> dist_x(0, std_pos[0]); // X-Gaussian Object generator
@@ -76,6 +86,11 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], std::vector<LandmarkObs> observations, Map map_landmarks) {
+	/*
+	Purpose: Particle weight updates based upon vehicle landmark observations and landmarks map location. All observsations are mapped from the relative position of the car, treated as (0,0), to the global coordinate system of each particle (i.e., potential car position).
+	Input(s): [sensor_range: maximum distance sensor can reliably observe landmarks (m)], [std_landmark: sensor measurement noise], [observations: Relative x/y coordinates of potential landmarks with respect to the vehicle (m)], [map_landmarks: Collection of landmarks in global coordinate system]
+	Output(s): N/A - Objects assignments: [particles_: Associated landmark per particle and weight assignment based upon euclidian distance], [weights_: Collection of all new particle weights, used in resampling step.]
+	*/
 
 	int ob_size = observations.size();
 	
@@ -164,16 +179,21 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], s
 				}
 			}
 		}
+		// GN 2017-10-26: Very clearly missed this step in prior commit. Not changing the weights vector for each particle would result in the resampling using the same weights on each iteration, completely defeating the purpose of the particle filter update steps.
+		weights_[p] = particles_[p].weight;
 	}
+	// _____ end FOR: particles_[p] _______ 
 }
-// _____ end FOR: particles_[p] _______ 
+
 
 
 
 void ParticleFilter::resample() {
-    // TODO: Resample particles with replacement with probability proportional to their weight. 
-    // NOTE: You may find std::discrete_distribution helpful here.
-    //   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+	/*
+	Purpose: Resample particles based upon weight assignment. The more weight a given particle has, the closer association it had with various landmark/observations, and therefore the more it will be sampled and used in further steps.
+	Input(s): N/A (global objects)
+	Output(s): N/A - Object assignemnts: [particles_: collection of new particles]
+	*/
 
     default_random_engine gen;
     std::discrete_distribution<int> weight_dist(weights_.begin(), weights_.end());
