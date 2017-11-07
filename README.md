@@ -32,3 +32,6 @@ Tuning the linear and yaw angle accelearation rates was done manually through tr
 
 _Project 8: Particle Filters_
 Creation of a particle fitler algoritm to localize a vehicle on a map with observable, known landmarks. In theory, a distribution of particles is sampled around the initial vehicle location (determined by something like GPS) and are assigned a weight based upon how well each of them "fits" the observations made by the actual vehicles sensors to given landmarks. The weights are calcuated by associating each observation (mapped from the car's relative frame of reference to the particles global coordinates) to a landmark and calculating the Euclidean distance. A particle is given a greater weight the smaller the sum of distances is. Particles are then resampled based upon how close they match the observations/landmarks (i.e., weights), with the higher weights being sampled more.
+
+_Project 9: PID Controllers_
+Implement a PID (proportional/integral/differential) control algorithm for car simulator. The error value is provided by the simulator (cross-track error: distance from center) and outputs steering response value to correct cars position.

@@ -4,6 +4,9 @@
 #include "PID.h"
 #include <math.h>
 
+
+
+
 // for convenience
 using json = nlohmann::json;
 
@@ -32,15 +35,19 @@ int main()
 {
   uWS::Hub h;
 
+
+
+  // ==================================== TODO: Initialize the pid variable. ====================================
   PID pid;
-  // TODO: Initialize the pid variable.
+  pid.Init(0.2, 0.0, 4.0);
+  // ============================================================================================================
+
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-    if (length && length > 2 && data[0] == '4' && data[1] == '2')
-    {
+    if (length && length > 2 && data[0] == '4' && data[1] == '2'){
       auto s = hasData(std::string(data).substr(0, length));
       if (s != "") {
         auto j = json::parse(s);
@@ -51,13 +58,40 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
-          /*
-          * TODO: Calcuate steering value here, remember the steering value is
-          * [-1, 1].
-          * NOTE: Feel free to play around with the throttle and speed. Maybe use
-          * another PID controller to control the speed!
-          */
           
+          // ================================== TODO: STEERING UPDATE ========================================
+          
+          // Steer Value Calculation (bound angle[-25,25] --> steer_value[-1,1])
+          pid.Update(cte);
+          steer_value = pid.Total()/deg2rad(25.0);
+          // =================================================================================================
+
+
+
+
+
+          // ========================== TODO: PARAMETER OPTIMIZATION/TUNING (Twiddle) ==========================
+          // GN 2017-11-07: On hold since initial guessing found reasonable parameters but will implement at a later time.
+          /*
+            Twiddle:
+
+            1) Compute best error (ssCTE/N) (b_err)
+            2) For each gain parameter:
+              2a) Increment gain by delta_gain
+              2b) Compute new best error (err)
+                2b.1.) If err<b_err, update the best error to current error, and increase delta_gain by factor larger than 1 (e.g., 1.1)
+                2b.2.) If err>b_err, compute the new best error to the other side of the gain (i.e., decrease by 2x the current delta_gain since it was increated in 2a)
+                  2b.2a.) If err<b_err, set b_err to the current error and multiply delta_gain by factor larger than 1. This means, make the delta more negative.
+                  2b.2b.) Else, increment the gain parameter back to the original gain by adding 1x delta_gain and multiple delta_gain by value smaller than 1 (e.g., 0.9)
+            3) Continue entire process until the sum of the delta_gain parameters gets sufficiently small
+
+          */
+          // =================================================================================================
+
+
+
+
+
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
