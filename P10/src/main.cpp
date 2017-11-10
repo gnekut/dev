@@ -44,8 +44,7 @@ double polyeval(Eigen::VectorXd coeffs, double x) {
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
-                        int order) {
+Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
   assert(xvals.size() == yvals.size());
   assert(order >= 1 && order <= xvals.size() - 1);
   Eigen::MatrixXd A(xvals.size(), order + 1);
@@ -92,14 +91,28 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
-          /*
-          * TODO: Calculate steering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
-          */
+
+
+          // Compute polynomial coefficients
+          double* ptsx_ptr = &ptsx[0];
+          Eigen::Map<Eigen::VectorXd> ptsx_eigen(ptsx_ptr, ptsx.size());
+          double* ptsy_ptr = &ptsy[0];
+          Eigen::Map<Eigen::VectorXd> ptsy_eigen(ptsy_ptr, ptsy.size());
+
+          int order = 1;
+          Eigen::VectorXd coeffs(order+1);
+          coeffs = polyfit(ptsx_eigen, ptsy_eigen, order);
+
+
+          // TODO: Calculate steering angle and throttle using MPC. Both are in between [-1, 1].
           double steer_value;
           double throttle_value;
+          Eigen::VectorXd state(4);
+          state << px, py, psi, v;
+
+
+
+
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.

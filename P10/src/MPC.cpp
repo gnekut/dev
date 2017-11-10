@@ -9,6 +9,18 @@ using CppAD::AD;
 size_t N = 0;
 double dt = 0;
 
+// State [x, y, psi, v, cte, e_psi]
+// Accuations [delta, a]
+int x_s = 0;
+int y_s = 1*N;
+int psi_s = 2*N;
+int v_s = 3*N;
+int cte_s = 4*N;
+int epsi_s = 5*N;
+int delta_s = 6*N; // len(1:N-1)
+int a_s = 7*N-1; // len(1:N-1)
+
+
 // This value assumes the model presented in the classroom is used.
 //
 // It was obtained by measuring the radius formed by running the vehicle in the
@@ -29,6 +41,80 @@ class FG_eval {
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   void operator()(ADvector& fg, const ADvector& vars) {
+    /*
+    Function: Compute the total cost and constraints
+    Inputs: [fg: vector containing cost contraints, note that fg[0] is the total cost, fg[1:N] are the actual constraint values], [vars: ]
+    */
+
+
+    // ========================= TOTAL COST ======================================
+    fg[0] = 0;
+    // Adding distance and heading error/cost.
+    for (int t = 0; t < N; t++) {
+      fg[0] += CppAD::pow(vars[cte_s + t], 2); // Cross-track error (distance from polynomial)
+      fg[0] += CppAD::pow(vars[epsi_s + t], 2); // Heading error (difference in polynomial slope and car direction)
+      // fg[0] += CppAD::pow(vars[v_s + t], 2);
+    }
+    // Adding steering and acceleration error/cost.
+    for (int t = 0; t < N - 1; t++) {
+      fg[0] += CppAD::pow(vars[delta_s + t], 2); // Steering
+      fg[0] += CppAD::pow(vars[a_s + t], 2); // Acceleration
+    }
+    // Adding change in steering and acceleration error/cost (prevent erradic state transitions)
+    for (int t = 0; t < N - 2; t++) {
+      fg[0] += CppAD::pow(vars[delta_s + t + 1] - vars[delta_s + t], 2);
+      fg[0] += CppAD::pow(vars[a_s + t + 1] - vars[a_s + t], 2);
+    }
+    // =============================================================================
+
+
+
+    // ====================== CONSTRAINTS ===========================================
+    // Initialization
+    fg[1 + x_s] = vars[x_s];
+    fg[1 + y_s] = vars[y_s];
+    fg[1 + psi_s] = vars[psi_s];
+    fg[1 + v_s] = vars[v_s];
+    fg[1 + cte_s] = vars[cte_s];
+    fg[1 + epsi_s] = vars[epsi_s];
+
+    for (int t=1; t<N; t++) {
+      // Current states (t)
+      AD<double> x_0 = vars[x_s + t - 1];
+      AD<double> y_0 = vars[y_s + t - 1];
+      AD<double> psi_0 = vars[psi_s + t - 1];
+      AD<double> v_0 = vars[v_s + t - 1];
+      AD<double> cte_0 = vars[cte_s + t - 1];
+      AD<double> epsi_0 = vars[epsi_s + t - 1];
+      AD<double> delta_0 = vars[delta_s + t - 1];
+      AD<double> a_0 = vars[a_s + t - 1];
+      
+      // Computed desired state
+      AD<double> des_y_0 = coeffs[0] + coeffs[1] * x_0; // First-order approximation of ref. line (ptsx/ptsy are two element vectors)
+      AD<double> des_psi_0 = CppAD::atan(coeffs[1]); // Steering angle
+
+      // Future states (t+1)
+      AD<double> x_t = vars[x_s + t];
+      AD<double> y_t = vars[y_s + t];
+      AD<double> psi_t = vars[psi_s + t];
+      AD<double> v_t = vars[v_s + t];
+      AD<double> cte_t = vars[cte_s + t];
+      AD<double> epsi_t = vars[epsi_s + t];
+
+      fg[1 + x_s + t] = x_t - (x_0 + (v_0 * CppAD::cos(psi_0) * dt));
+      fg[1 + y_s + t] = y_t - (y_0 + (v_0 * CppAD::sin(psi_0) * dt));
+      fg[1 + psi_s + t] = psi_t - (psi_0 - (v_0 * delta_0 * dt) / Lf); // NOTE: made (psi_0 + v_0 ...) to (psi_o - v_0 ...) as suggested
+      fg[1 + v_s + t] = v_t - (v_0 + (a_0 * dt));
+      fg[1 + cte_s + t] = cte_t - ((des_y_0 - y_0) + (v_0 * CppAD::sin(epsi_0) * dt));
+      fg[1 + epsi_s + t] = epsi_t - ((psi_0 - des_psi_0) + (v_0 * delta_0 * dt) / Lf);
+
+    }
+    // =======================================================================================
+
+
+
+
+
     // TODO: implement MPC
     // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
     // NOTE: You'll probably go back and forth between this function and
@@ -47,14 +133,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
-  // TODO: Set the number of model variables (includes both states and inputs).
-  // For example: If the state is a 4 element vector, the actuators is a 2
-  // element vector and there are 10 timesteps. The number of variables is:
-  //
-  // 4 * 10 + 2 * 9
-  size_t n_vars = 0;
-  // TODO: Set the number of constraints
-  size_t n_constraints = 0;
+
+  size_t n_vars = (6 * N) + (2 * (N-1)); // Number of variable states
+  size_t n_constraints = (6 * N) + 1; // Number of contraint states
+
+
 
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
@@ -62,12 +145,47 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   for (int i = 0; i < n_vars; i++) {
     vars[i] = 0;
   }
+  vars[x_s] = state[0];
+  vars[y_s] = state[1];
+  vars[psi_s] = state[2];
+  vars[v_s] = state[3];
+
 
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
   // TODO: Set lower and upper limits for variables.
+  for (int i = 0; i < N; i++) {
+    // X
+    vars_lowerbound[x_s + i] = -std::numeric_limits<double>::max();
+    vars_upperbound[x_s + i] = std::numeric_limits<double>::max();
+    // Y
+    vars_lowerbound[y_s + i] = -std::numeric_limits<double>::max();
+    vars_upperbound[y_s + i] = std::numeric_limits<double>::max();
+    // PSI
+    vars_lowerbound[psi_s + i] = 0;
+    vars_upperbound[psi_s + i] = 3.14159; 
+    // V
+    vars_lowerbound[v_s + i] = 0;
+    vars_upperbound[v_s + i] = 50;
+    // CTE
+    vars_lowerbound[cte_s + i] = -5;
+    vars_upperbound[cte_s + i] = 5;
+    // ePSI
+    vars_lowerbound[epsi_s + i] = -0.78539; // -PI/4
+    vars_upperbound[epsi_s + i] = 0.78539; // PI/4
+    if (i < N - 1) {
+      // Delta
+      vars_lowerbound[delta_s + i] = -0.436332;
+      vars_upperbound[delta_s + i] = 0.436332;
+      // A
+      vars_lowerbound[a_s + i] = -1;
+      vars_upperbound[a_s + i] = 1;
 
-  // Lower and upper limits for the constraints
+    }
+  }
+
+
+  // TODO: Lower and upper limits for the constraints
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
