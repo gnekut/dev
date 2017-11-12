@@ -7,8 +7,8 @@ using CppAD::AD;
 
 
 
-int N = 20;       // Number of variable states ([x, y, psi, v, cte, e_psi] * N)
-double dt = 0.05; // Time duration between states
+int N = 10;       // Number of variable states ([x, y, psi, v, cte, e_psi] * N)
+double dt = 0.1; // Time duration between states
 
 
 // Vector Indices (start of state vectors 'i')
@@ -53,24 +53,24 @@ class FG_eval {
     // State reference values: Adjusts the cost function(s) to center around the reference value
     double cte_ref  = 0;
     double epsi_ref = 0;
-    double v_ref = 30;
+    double v_ref = 70;
 
     fg[0] = 0;
     // Adding distance and heading error/cost.
     for (int t = 0; t < N; t++) {
-      fg[0] += 200 * CppAD::pow(vars[cte_s + t] - cte_ref, 2);   // Cross-track error (distance from polynomial)
-      fg[0] += 200 * CppAD::pow(vars[epsi_s + t] - epsi_ref, 2); // Heading error (difference in polynomial slope and car direction)
+      fg[0] += 1000 * CppAD::pow(vars[cte_s + t] - cte_ref, 2);   // Cross-track error (distance from polynomial)
+      fg[0] += 10000 * CppAD::pow(vars[epsi_s + t] - epsi_ref, 2); // Heading error (difference in polynomial slope and car direction)
       fg[0] += 100 * CppAD::pow(vars[v_s + t] - v_ref, 2);       // Velocity error
     }
     // Adding steering and acceleration error/cost.
     for (int t = 0; t < N - 1; t++) {
-      fg[0] += 1 * CppAD::pow(vars[delta_s + t], 2); // Steering angle penalty (straight vs. turning)
-      fg[0] += 1 * CppAD::pow(vars[a_s + t], 2);     // Acceleration angle penalty (constant speed vs. changing)
+      fg[0] += 100 * CppAD::pow(vars[delta_s + t], 2); // Steering angle penalty (straight vs. turning)
+      fg[0] += 1 * CppAD::pow(vars[a_s + t], 2);     // Acceleration penalty (constant speed vs. changing)
     }
     // Adding change in steering and acceleration error/cost (prevent erradic state transitions)
     for (int t = 0; t < N - 2; t++) {
       fg[0] += 10000 * CppAD::pow(vars[delta_s + t + 1] - vars[delta_s + t], 2); // Steering angle change (sharp vs smooth turns)
-      fg[0] += 1000 * CppAD::pow(vars[a_s + t + 1] - vars[a_s + t], 2);          // Acceleration change (hard vs soft accelerations)
+      fg[0] += 100 * CppAD::pow(vars[a_s + t + 1] - vars[a_s + t], 2);          // Acceleration change (hard vs soft accelerations)
     }
     // =============================================================================
 

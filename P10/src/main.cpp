@@ -115,24 +115,34 @@ int main() {
           // =======================================================================================
 
 
-          // GN TO-DO: Add latency of 0.1 - 0.2 seconds
-          // ================================ Current and Predicted States =============================
+
+
+          
+          // ================================ Current (latency) and Predicted States =============================
           Eigen::VectorXd state(6);
-          double cte = coeffs[0];                 // Current cross-track error (f(0))
-          double epsi = -atan(coeffs[1]);         // Current heading error (f'(0))
-          state << 0.0, 0.0, 0.0, v, cte, epsi;   // Current state vector (x, y, psi, v, cte, epsi)
+          double cte = coeffs[0];         // Current cross-track error (f(0))
+          double epsi = -atan(coeffs[1]); // Current heading error (f'(0))
+
+          const double Lf = 2.67;
+          const double dt_late = 0.1; 
+          const double y_late = 0.0;
+          double x_late = v * dt_late;
+          double psi_late = - v * delta * dt_late / Lf;
+          double v_late = v + a * dt_late;
+          double cte_late = cte + v * sin(epsi) * dt_late;
+          double epsi_late = epsi + psi_late;                   
+          state << x_late, y_late, psi_late, v_late, cte_late, epsi_late;
 
           vector<double> mpc_results;
           mpc_results = mpc.Solve(state, coeffs); // Predicted actuations and locations (delta, a, x<>, y<>)
           // =======================================================================================
 
 
-
           json msgJson;
           
 
           // ====================================== Output =======================================
-          msgJson["steering_angle"] = mpc_results[0] / (2.67 * deg2rad(25));  // Normalized steering angle actuation
+          msgJson["steering_angle"] = mpc_results[0] / (Lf * deg2rad(25));  // Normalized steering angle actuation
           msgJson["throttle"] = mpc_results[1];                               // Acceleration actuation
 
           // Display the MPC predicted trajectory 
@@ -152,7 +162,7 @@ int main() {
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
-          for (int i = 0; i < 20; i++) {
+          for (int i = 0; i < 30; i++) {
             next_x_vals.push_back(i * 2);
             next_y_vals.push_back(polyeval(coeffs, i * 2));
           }
